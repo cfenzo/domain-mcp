@@ -1,8 +1,6 @@
 {
-  "mcpServers": {
-    "domain-checker": {
-      "command": "npx",
-      "args": ["-y", "-p", "github:cfenzo/domain-mcp", "domain-mcp"]
-    }
+  "domain-checker": {
+    "command": "npx",
+    "args": ["-y", "-p", "github:cfenzo/domain-mcp", "domain-mcp"]
   }
 }
