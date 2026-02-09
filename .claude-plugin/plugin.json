@@ -1,0 +1,11 @@
+{
+  "name": "domain-checker",
+  "version": "1.0.0",
+  "description": "Check domain name availability using DNS and WHOIS lookups",
+  "author": {
+    "name": "cfenzo"
+  },
+  "repository": "https://github.com/cfenzo/domain-mcp",
+  "license": "ISC",
+  "keywords": ["domain", "dns", "whois", "mcp"]
+}
