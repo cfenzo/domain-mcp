@@ -14,33 +14,42 @@ A CLI and MCP (Model Context Protocol) server for reliably checking domain name 
 ## Installation
 
 ```bash
-npm install
-npm run build
+# Install globally from GitHub
+npm install -g github:cfenzo/domain-mcp
+
+# Or use directly with npx (no install needed)
+npx github:cfenzo/domain-mcp --help
 ```
 
 ## CLI Usage
 
 ```bash
 # Check a single domain
-node dist/cli.js example.com
+domain-check example.com
 
 # Check across popular TLDs
-node dist/cli.js myapp --alt
+domain-check myapp --alt
 
 # Check tech-focused TLDs (io, dev, app, ai, etc.)
-node dist/cli.js startup --alt --tech
+domain-check startup --alt --tech
 
 # Check specific TLDs
-node dist/cli.js mybrand --tlds com,io,dev,app
+domain-check mybrand --tlds com,io,dev,app
 
 # JSON output
-node dist/cli.js example.com --json
+domain-check example.com --json
 
 # Only show available domains
-node dist/cli.js myapp --alt --available-only
+domain-check myapp --alt --available-only
 ```
 
-## MCP Server
+Or with npx (no installation):
+
+```bash
+npx -p github:cfenzo/domain-mcp domain-check example.com --alt
+```
+
+## Claude Code MCP Server
 
 Add to your Claude Code configuration (`~/.claude.json`):
 
@@ -48,8 +57,8 @@ Add to your Claude Code configuration (`~/.claude.json`):
 {
   "mcpServers": {
     "domain-checker": {
-      "command": "node",
-      "args": ["/path/to/domain-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "-p", "github:cfenzo/domain-mcp", "domain-mcp"]
     }
   }
 }
