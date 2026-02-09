@@ -1,0 +1,11 @@
+{
+  "name": "cfenzo-plugins",
+  "description": "cfenzo's Claude Code plugins",
+  "plugins": [
+    {
+      "name": "domain-checker",
+      "description": "Check domain name availability using DNS and WHOIS lookups",
+      "source": "github:cfenzo/domain-mcp"
+    }
+  ]
+}
