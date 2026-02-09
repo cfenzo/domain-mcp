@@ -1,0 +1,78 @@
+# domain-mcp
+
+A CLI and MCP (Model Context Protocol) server for reliably checking domain name availability. Uses both DNS and WHOIS lookups for high-confidence results.
+
+## Features
+
+- **Dual verification**: Combines DNS and WHOIS checks for reliable results
+- **Confidence levels**: Reports high/medium/low confidence based on verification methods
+- **Alternative TLD search**: Find available domains across multiple TLDs
+- **Domain suggestions**: Generate variations with common prefixes/suffixes
+- **MCP server**: Use with Claude and other MCP-compatible AI assistants
+- **CLI tool**: Command-line interface for quick lookups
+
+## Installation
+
+```bash
+npm install
+npm run build
+```
+
+## CLI Usage
+
+```bash
+# Check a single domain
+node dist/cli.js example.com
+
+# Check across popular TLDs
+node dist/cli.js myapp --alt
+
+# Check tech-focused TLDs (io, dev, app, ai, etc.)
+node dist/cli.js startup --alt --tech
+
+# Check specific TLDs
+node dist/cli.js mybrand --tlds com,io,dev,app
+
+# JSON output
+node dist/cli.js example.com --json
+
+# Only show available domains
+node dist/cli.js myapp --alt --available-only
+```
+
+## MCP Server
+
+Add to your Claude Code configuration (`~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "domain-checker": {
+      "command": "node",
+      "args": ["/path/to/domain-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+- **check_domain**: Check a single domain's availability
+- **check_alternative_tlds**: Check availability across multiple TLDs
+- **suggest_domains**: Generate and check domain name variations
+- **list_tlds**: List available TLD categories
+
+## How It Works
+
+1. **DNS Check**: Queries DNS for A records. If found, domain is definitely taken.
+2. **WHOIS Check**: Queries WHOIS servers for registration data.
+3. **Confidence Scoring**:
+   - **High**: Both methods agree (DNS exists + WHOIS registered, or no DNS + WHOIS available)
+   - **Medium**: Only one method provided data
+   - **Low**: Errors or ambiguous results
+
+## TLD Categories
+
+- **General**: com, net, org, io, co, dev, app, ai, xyz, me, info, biz, tech, online, site, cloud
+- **Tech**: io, dev, app, ai, tech, cloud, software, systems, digital, code
+- **Country**: uk, de, fr, nl, es, it, pl, ru, jp, cn, au, ca, us, in, br

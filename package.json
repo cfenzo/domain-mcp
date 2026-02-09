@@ -1,0 +1,33 @@
+{
+  "name": "@pxl/domain-mcp",
+  "version": "1.0.0",
+  "description": "CLI and MCP server for checking domain name availability",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "domain-check": "./dist/cli.js",
+    "domain-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "cli": "node dist/cli.js",
+    "test": "node --test dist/**/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["domain", "mcp", "cli", "dns", "whois"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "whois": "^2.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
