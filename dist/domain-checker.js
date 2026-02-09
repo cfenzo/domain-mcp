@@ -5,6 +5,11 @@ const require = createRequire(import.meta.url);
 const whois = require("whois");
 const lookupAsync = promisify(whois.lookup);
 const dnsResolve = promisify(dns.resolve);
+// Configuration
+const WHOIS_TIMEOUT_MS = 10000; // 10 second timeout for WHOIS
+const DNS_TIMEOUT_MS = 5000; // 5 second timeout for DNS
+const BATCH_DELAY_MS = 1500; // 1.5 second delay between batches
+const DEFAULT_CONCURRENCY = 3; // Lower concurrency to avoid rate limits
 // Popular TLDs for alternative searches
 export const POPULAR_TLDS = [
     "com",
@@ -56,6 +61,21 @@ export const TECH_TLDS = [
     "code",
 ];
 /**
+ * Wrap a promise with a timeout
+ */
+function withTimeout(promise, ms, errorMsg) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms)),
+    ]);
+}
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+/**
  * Parse domain into name and TLD parts
  */
 export function parseDomain(domain) {
@@ -72,13 +92,16 @@ export function parseDomain(domain) {
  */
 async function checkDns(domain) {
     try {
-        await dnsResolve(domain, "A");
+        await withTimeout(dnsResolve(domain, "A"), DNS_TIMEOUT_MS, "DNS lookup timed out");
         return { exists: true };
     }
     catch (err) {
         const error = err;
         if (error.code === "ENOTFOUND" || error.code === "ENODATA") {
             return { exists: false };
+        }
+        if (error.message === "DNS lookup timed out") {
+            return { exists: false, error: "timeout" };
         }
         // Other errors might mean the domain exists but has issues
         return { exists: false, error: error.message };
@@ -89,7 +112,7 @@ async function checkDns(domain) {
  */
 async function checkWhois(domain) {
     try {
-        const result = await lookupAsync(domain);
+        const result = await withTimeout(lookupAsync(domain), WHOIS_TIMEOUT_MS, "WHOIS lookup timed out");
         const whoisData = typeof result === "string" ? result : String(result);
         // Common patterns indicating domain is available
         const availablePatterns = [
@@ -219,7 +242,7 @@ export async function checkDomain(domain) {
  * Check domain availability across multiple TLDs
  */
 export async function checkAlternativeTlds(domainName, tlds = POPULAR_TLDS, options = {}) {
-    const { concurrency = 5 } = options;
+    const { concurrency = DEFAULT_CONCURRENCY, batchDelay = BATCH_DELAY_MS } = options;
     const name = domainName.includes(".") ? parseDomain(domainName).name : domainName;
     const results = [];
     // Process in batches to avoid overwhelming servers
@@ -227,6 +250,10 @@ export async function checkAlternativeTlds(domainName, tlds = POPULAR_TLDS, opti
         const batch = tlds.slice(i, i + concurrency);
         const batchResults = await Promise.all(batch.map((tld) => checkDomain(`${name}.${tld}`)));
         results.push(...batchResults);
+        // Add delay between batches (except after the last batch)
+        if (i + concurrency < tlds.length) {
+            await sleep(batchDelay);
+        }
     }
     return {
         originalDomain: name,

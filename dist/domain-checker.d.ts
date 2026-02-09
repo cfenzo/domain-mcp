@@ -30,6 +30,7 @@ export declare function checkDomain(domain: string): Promise<DomainCheckResult>;
  */
 export declare function checkAlternativeTlds(domainName: string, tlds?: string[], options?: {
     concurrency?: number;
+    batchDelay?: number;
 }): Promise<AlternativeTldResult>;
 /**
  * Get suggested TLDs based on domain purpose

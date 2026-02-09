@@ -8,6 +8,12 @@ const whois = require("whois");
 const lookupAsync = promisify(whois.lookup);
 const dnsResolve = promisify(dns.resolve);
 
+// Configuration
+const WHOIS_TIMEOUT_MS = 10000; // 10 second timeout for WHOIS
+const DNS_TIMEOUT_MS = 5000; // 5 second timeout for DNS
+const BATCH_DELAY_MS = 1500; // 1.5 second delay between batches
+const DEFAULT_CONCURRENCY = 3; // Lower concurrency to avoid rate limits
+
 export interface DomainCheckResult {
   domain: string;
   tld: string;
@@ -77,6 +83,25 @@ export const TECH_TLDS = [
 ];
 
 /**
+ * Wrap a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMsg)), ms)
+    ),
+  ]);
+}
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Parse domain into name and TLD parts
  */
 export function parseDomain(domain: string): { name: string; tld: string } {
@@ -94,12 +119,19 @@ export function parseDomain(domain: string): { name: string; tld: string } {
  */
 async function checkDns(domain: string): Promise<{ exists: boolean; error?: string }> {
   try {
-    await dnsResolve(domain, "A");
+    await withTimeout(
+      dnsResolve(domain, "A"),
+      DNS_TIMEOUT_MS,
+      "DNS lookup timed out"
+    );
     return { exists: true };
   } catch (err: unknown) {
     const error = err as NodeJS.ErrnoException;
     if (error.code === "ENOTFOUND" || error.code === "ENODATA") {
       return { exists: false };
+    }
+    if (error.message === "DNS lookup timed out") {
+      return { exists: false, error: "timeout" };
     }
     // Other errors might mean the domain exists but has issues
     return { exists: false, error: error.message };
@@ -111,7 +143,11 @@ async function checkDns(domain: string): Promise<{ exists: boolean; error?: stri
  */
 async function checkWhois(domain: string): Promise<{ available: boolean; details?: string; error?: string }> {
   try {
-    const result = await lookupAsync(domain);
+    const result = await withTimeout(
+      lookupAsync(domain),
+      WHOIS_TIMEOUT_MS,
+      "WHOIS lookup timed out"
+    );
     const whoisData = typeof result === "string" ? result : String(result);
 
     // Common patterns indicating domain is available
@@ -245,9 +281,9 @@ export async function checkDomain(domain: string): Promise<DomainCheckResult> {
 export async function checkAlternativeTlds(
   domainName: string,
   tlds: string[] = POPULAR_TLDS,
-  options: { concurrency?: number } = {}
+  options: { concurrency?: number; batchDelay?: number } = {}
 ): Promise<AlternativeTldResult> {
-  const { concurrency = 5 } = options;
+  const { concurrency = DEFAULT_CONCURRENCY, batchDelay = BATCH_DELAY_MS } = options;
   const name = domainName.includes(".") ? parseDomain(domainName).name : domainName;
 
   const results: DomainCheckResult[] = [];
@@ -259,6 +295,11 @@ export async function checkAlternativeTlds(
       batch.map((tld) => checkDomain(`${name}.${tld}`))
     );
     results.push(...batchResults);
+
+    // Add delay between batches (except after the last batch)
+    if (i + concurrency < tlds.length) {
+      await sleep(batchDelay);
+    }
   }
 
   return {
